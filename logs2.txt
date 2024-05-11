@@ -1,1 +1,1 @@
-Hi
+Error sending message to server

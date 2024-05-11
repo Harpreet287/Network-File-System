@@ -6,6 +6,51 @@ constexpr int PORT_CLIENT = 8000;
 constexpr int BUFFER_SIZE = 1024;
 constexpr int TIMEOUT_SECONDS = 5;
 
+int 
+get_buffer(int connection, char* &buffer, int bufferSize, int flags) {
+    int bytesReceived = recv(connection, buffer, bufferSize, flags);
+    if (bytesReceived > 0) {
+        buffer[bytesReceived] = '\0';
+        std::cout << "Received data from client: " << buffer << "\n";
+    } else if (bytesReceived == 0) {
+        std::cout << "Client closed connection\n";
+    } else {
+        std::cerr << "Error receiving data from client\n";
+    }
+    return bytesReceived;
+}
+
+void 
+create_file(std::string path) {
+  std::ofstream outfile(path);
+  if (outfile.is_open()) {
+    std::cout << "File created successfully: " << path << std::endl;
+    outfile.close();
+  } else {
+    std::cerr << "Failed to create file: " << path << std::endl;
+  }
+}
+
+void 
+delete_file(std::string path) {
+  std::ifstream infile(path);
+  if (!infile.good()) {
+    std::cerr << "File does not exist: " << path << std::endl;
+    return;
+  }
+
+  if (std::remove(path.c_str()) == 0) {
+    std::cout << "File deleted successfully: " << path << std::endl;
+  } else {
+    std::cerr << "Failed to delete file: " << path << std::endl;
+  }
+}
+
+void
+copy_file(std::string source, std::string destination){
+
+}
+
 void handleConnectionNameServer(int sock, const std::string &connectionType)
 {
   struct sockaddr_in client;
@@ -17,6 +62,31 @@ void handleConnectionNameServer(int sock, const std::string &connectionType)
     if (connection >= 0)
     {
       std::cout << "Received connection from " << connectionType << "\n";
+      // int bytesReceived = get_buffer(connection,buffer, BUFFER_SIZE, 0);
+      char buffer[BUFFER_SIZE];
+      char* ptr = buffer;
+      int bytesReceived = get_buffer(connection, ptr, BUFFER_SIZE, 0);
+      std::stringstream ss(buffer);
+      std::istream_iterator<std::string> begin(ss), end;
+      std::vector<std::string> words(begin, end);
+      
+      if(words[0]=="create"){
+        create_file(words[1]); 
+      }
+      else if(words[0]=="delete"){
+        delete_file(words[1]);
+      }
+      else if(words[0]=="copy"){
+        if(words.size()<3){
+          std::cout<<"Insufficient Arguments provided"<<std::endl;
+          continue;
+        }
+        copy_file(words[1], words[2]);
+      }
+      else {
+        std::cout<<"Sorry What?"<<std::endl;
+      }
+
     }
     else
     {
@@ -41,20 +111,8 @@ handleConnectionClient(int sock, const std::string &connectionType)
       std::cout << "Received connection from " << connectionType << "\n";
 
       char buffer[BUFFER_SIZE];
-      int bytesReceived = recv(connection, buffer, BUFFER_SIZE, 0);
-      if (bytesReceived > 0)
-      {
-        buffer[bytesReceived] = '\0';
-        std::cout << "Received data from client: " << buffer << "\n";
-      }
-      else if (bytesReceived == 0)
-      {
-        std::cout << "Client closed connection\n";
-      }
-      else
-      {
-        std::cerr << "Error receiving data from client\n";
-      }
+      char* ptr = buffer;
+      int bytesReceived = get_buffer(connection, ptr, BUFFER_SIZE, 0);
       std::stringstream ss(buffer);
       std::istream_iterator<std::string> begin(ss), end;
       std::vector<std::string> words(begin, end);

@@ -6,7 +6,16 @@
 #include <arpa/inet.h>
 
 #define SERVER_IP "0.0.0.0"
-#define SERVER_PORT 8000
+#define SERVER_PORT 8080
+#define BUFFER_SIZE 1024
+
+void send_message(int clientSocket, const std::string& message) {
+    if (send(clientSocket, message.c_str(), message.size(), 0) == -1) {
+        std::cerr << "Error sending message to server" << std::endl;
+        exit(1);
+    }
+    std::cout << "Message sent to server: " << message << std::endl;
+}
 
 int main() {
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -26,13 +35,8 @@ int main() {
     }
 
     // Send message to the server
-    const char* message = "write ./logs2.txt Error sending message to server";
-    if (send(clientSocket, message, strlen(message), 0) == -1) {
-        std::cerr << "Error sending message to server" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Message sent to server: " << message << std::endl;
+    std::string message = "delete ./new_file.txt";
+    send_message(clientSocket, message);
 
     // Close the socket
     close(clientSocket);

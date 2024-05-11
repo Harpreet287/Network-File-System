@@ -62,7 +62,7 @@ get_permissions(std::string path) {
 
 
 int 
-checkQuery(std::vector<std::string> words)
+checkQuery(std::vector<std::string>& words)
 {
   if (words[0] == "read" or words[0] == "getperm")
   {
@@ -85,8 +85,18 @@ checkQuery(std::vector<std::string> words)
     }
     if (words.size() > 3)
     {
-      std::cout << "More than needed arguments" << std::endl;
-      return -1;
+      std::string g = words[2];
+      std::vector<std::string> temp ;
+      temp.push_back(words[0]);
+      temp.push_back(words[1]);
+      for(int i = 3; i< words.size(); i++){
+        g+=' ';
+        g += words[i];
+      }
+      temp.push_back(g);
+      words = temp;
+
+      return 1;
     }
     return 1;
   }
