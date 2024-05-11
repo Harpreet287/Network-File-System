@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 
 #define SERVER_IP "0.0.0.0"
-#define SERVER_PORT 8000
+#define SERVER_PORT 8090
 
 int main() {
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);

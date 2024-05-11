@@ -1,23 +1,7 @@
 #ifndef CLIENT_SS_H
 #define CLIENT_SS_H
 
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <iterator>
-#include <fstream>
-#include <sys/stat.h>
-#include <cstring>
-#include <cerrno>
-#include <filesystem>
+#include "imports.h"
 
 namespace fs = std::filesystem;
 

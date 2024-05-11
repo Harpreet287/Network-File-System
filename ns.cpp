@@ -1,45 +1,149 @@
+#include "connection.h"
+#include "imports.h"
+#include <vector>
 #include <iostream>
-#include <cstring>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <arpa/inet.h>
+#include <thread>
 
-#define SERVER_IP "0.0.0.0"
-#define SERVER_PORT 8080
-#define BUFFER_SIZE 1024
+/**
+ * 2 listen (one for client on 8090, one for ss on 8080)
+ * 1 connect (8000)
+ */
+constexpr int BUFFER_SIZE = 1024;
+constexpr int PORT_CLIENT = 8090;         // listen to client
+constexpr int PORT_STORAGE_SERVER = 8080; // listen new ss
+constexpr int PORT_CSS = 8088;            // connect to existing ss
 
-void send_message(int clientSocket, const std::string& message) {
-    if (send(clientSocket, message.c_str(), message.size(), 0) == -1) {
-        std::cerr << "Error sending message to server" << std::endl;
-        exit(1);
-    }
-    std::cout << "Message sent to server: " << message << std::endl;
+std::vector<int> storage_server_sockets;
+
+int get_buffer(int connection, char *&buffer, int bufferSize, int flags)
+{
+  int bytesReceived = recv(connection, buffer, bufferSize, flags);
+  if (bytesReceived > 0)
+  {
+    buffer[bytesReceived] = '\0';
+    std::cout << "Received data from client: " << buffer << "\n";
+  }
+  else if (bytesReceived == 0)
+  {
+    std::cout << "Client closed connection\n";
+  }
+  else
+  {
+    std::cerr << "Error receiving data from client\n";
+  }
+  return bytesReceived;
 }
 
-int main() {
-    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (clientSocket == -1) {
-        std::cerr << "Error creating socket" << std::endl;
-        return 1;
+void handleConnectionStorageServer(int sock, const std::string &connectionType)
+{
+  struct sockaddr_in client;
+  socklen_t clientLen = sizeof(client);
+
+  while (true)
+  {
+    int connection = accept(sock, (struct sockaddr *)&client, &clientLen);
+    if (connection >= 0)
+    {
+      std::cout << "Received connection from " << connectionType << "\n";
+      storage_server_sockets.push_back(connection);
+      // Handle storage server connection here
     }
-
-    sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(SERVER_PORT);
-    serverAddr.sin_addr.s_addr = inet_addr(SERVER_IP);
-
-    if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
-        std::cerr << "Error connecting to server" << std::endl;
-        return 1;
+    else
+    {
+      std::cout << "No connection from " << connectionType << "\n";
     }
+  }
+}
 
-    // Send message to the server
-    std::string message = "delete ./new_file.txt";
-    send_message(clientSocket, message);
+void handleConnectionClient(int sock, const std::string &connectionType, int port)
+{
+  struct sockaddr_in client;
+  socklen_t clientLen = sizeof(client);
+  int socki = socket(AF_INET, SOCK_STREAM, 0);
+  if(socki==-1){
+    std::cout<<"ERRR"<<std::endl;
+    return;
+  }
+  struct sockaddr_in server;
+  server.sin_family = AF_INET;
+  server.sin_addr.s_addr = htonl(INADDR_LOOPBACK); 
+  server.sin_port = htons(port);
 
-    // Close the socket
-    close(clientSocket);
+  if (connect(socki, (struct sockaddr *)&server, sizeof(server)) < 0)
+  {
+    std::cout << "Connection failed to port " << port << "\n";
+    return;
+  }
+  std::cout << "Connected to port " << port << "\n";
 
-    return 0;
+  while (true)
+  {
+    int connection = accept(sock, (struct sockaddr *)&client, &clientLen);
+    if (connection >= 0)
+    {
+      std::cout << "Received connection from " << connectionType << "\n";
+      char buffer[BUFFER_SIZE];
+      char *ptr = buffer;
+      int bytesReceived = get_buffer(connection, ptr, BUFFER_SIZE, 0);
+      std::stringstream ss(buffer);
+      std::istream_iterator<std::string> begin(ss), end;
+      std::vector<std::string> words(begin, end);
+
+      if (words[0] == "create")
+      {
+      }
+      else if (words[0] == "delete")
+      {
+      }
+      else if (words[0] == "copy")
+      {
+      }
+      else if (words[0] == "read")
+      {
+      }
+      else if (words[0] == "write")
+      {
+        std::cout << "BOYAH" << std::endl;
+      }
+      else if (words[0] == "getperm")
+      {
+      }
+    }
+    else
+    {
+      std::cout << "No connection from " << connectionType << "\n";
+    }
+  }
+}
+
+int main()
+{
+  int clientSock = createSocket(PORT_CLIENT);
+  int storageServerSock = createSocket(PORT_STORAGE_SERVER);
+
+  int opt = 1;
+  if (setsockopt(clientSock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0 ||
+      setsockopt(storageServerSock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+  {
+    std::cerr << "Error setting socket options\n";
+    exit(1);
+  }
+
+  bindSocket(clientSock, PORT_CLIENT);
+  bindSocket(storageServerSock, PORT_STORAGE_SERVER);
+
+  listenSocket(clientSock);
+  listenSocket(storageServerSock);
+
+  std::thread storageServerThread(handleConnectionStorageServer, storageServerSock, "storage server");
+  std::thread clientThread(handleConnectionClient, clientSock, "client", PORT_CSS);
+
+  storageServerThread.join();
+  clientThread.join();
+
+  close(clientSock);
+  close(storageServerSock);
+  // close(clientSock);
+
+  return 0;
 }
